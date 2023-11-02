@@ -1,0 +1,183 @@
+#!/bin/bash
+
+# Function to display the manual page
+man_page() {
+    cat <<EOF
+internsctl(1)                              Interns Control Manual                              internsctl(1)
+
+NAME
+    internsctl - Custom Linux command for various operations.
+
+SYNOPSIS
+    internsctl <subcommand> [options]
+
+DESCRIPTION
+    internsctl is a custom Linux command that provides various functionalities to interact with
+    your server.
+
+SUBCOMMANDS
+    cpu getinfo
+        Get CPU information similar to the 'lscpu' command.
+
+    memory getinfo
+        Get memory information similar to the 'free' command.
+
+    user create <username>
+        Create a new user who can log in to the system.
+
+    user list
+        List all regular users.
+
+    user list --sudo-only
+        List users with sudo permissions.
+
+    file getinfo <file-name>
+        Get information about a file, including size, permissions, owner, and last modified time.
+
+OPTIONS
+    --size, -s
+        Print file size.
+
+    --permissions, -p
+        Print file permissions.
+
+    --owner, -o
+        Print file owner.
+
+    --last-modified, -m
+        Print last modified time.
+
+--help
+    Display this help message.
+
+--version
+    Display the version of internsctl.
+
+EXAMPLES
+    $ internsctl cpu getinfo
+    $ internsctl memory getinfo
+    $ internsctl user create john
+    $ internsctl user list
+    $ internsctl user list --sudo-only
+    $ internsctl file getinfo hello.txt
+    $ internsctl file getinfo --size hello.txt
+    $ internsctl file getinfo --permissions hello.txt
+    $ internsctl file getinfo --owner hello.txt
+    $ internsctl file getinfo --last-modified hello.txt
+
+VERSION
+    internsctl v0.1.0
+
+AUTHOR
+    Sonil Srivastava
+
+SEE ALSO
+    lscpu(1), free(1), useradd(8), getent(1), stat(1)
+
+EOF
+}
+
+# Function to display help
+display_help() {
+    man_page
+}
+
+# Function to display version
+display_version() {
+    echo "internsctl v0.1.0"
+}
+
+# Check if there are no arguments
+if [ $# -eq 0 ]; then
+    display_help
+    exit 1
+fi
+
+# Main switch for subcommands
+case "$1" in
+    "cpu")
+        if [ "$2" == "getinfo" ]; then
+            lscpu
+        else
+            echo "Unknown subcommand for 'cpu'"
+        fi
+        ;;
+    "memory")
+        if [ "$2" == "getinfo" ]; then
+            free
+        else
+            echo "Unknown subcommand for 'memory'"
+        fi
+        ;;
+    "user")
+        case "$2" in
+            "create")
+                if [ -n "$3" ]; then
+                    sudo useradd -m "$3"
+                    echo "User $3 created successfully."
+                else
+                    echo "Please provide a username to create."
+                fi
+                ;;
+            "list")
+                if [ "$3" == "--sudo-only" ]; then
+                    getent passwd | grep -E 'sudo|admin'
+                else
+                    getent passwd | cut -d: -f1
+                fi
+                ;;
+            *)
+                echo "Unknown subcommand for 'user'"
+                ;;
+        esac
+        ;;
+    "file")
+        if [ "$2" == "getinfo" ]; then
+            if [ -n "$3" ]; then
+                if [ -f "$3" ]; then
+                    filename=$(basename "$3")
+                    access=$(stat -c %A "$3")
+                    size=$(stat -c %s "$3")
+                    owner=$(stat -c %U "$3")
+                    last_modified=$(stat -c %y "$3")
+                    case "$4" in
+                        "--size" | "-s")
+                            echo "$size"
+                            ;;
+                        "--permissions" | "-p")
+                            echo "$access"
+                            ;;
+                        "--owner" | "-o")
+                            echo "$owner"
+                            ;;
+                        "--last-modified" | "-m")
+                            echo "$last_modified"
+                            ;;
+                        *)
+                            echo "File: $filename"
+                            echo "Access: $access"
+                            echo "Size(B): $size"
+                            echo "Owner: $owner"
+                            echo "Modify: $last_modified"
+                            ;;
+                    esac
+                else
+                    echo "File '$3' not found."
+                fi
+            else
+                echo "Please provide a filename."
+            fi
+        else
+            echo "Unknown subcommand for 'file'"
+        fi
+        ;;
+    "--help")
+        display_help
+        ;;
+    "--version")
+        display_version
+        ;;
+    *)
+        echo "Unknown subcommand: $1"
+        ;;
+esac
